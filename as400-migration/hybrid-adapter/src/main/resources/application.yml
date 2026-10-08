@@ -1,0 +1,17 @@
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+ibmi:
+  host: ${PUB400_HOST:pub400.com}
+  user: ${PUB400_USER:SAMPLEUSER}
+  password: ${PUB400_PASSWORD:}
+  library: ${PUB400_LIBRARY:SAMPLELIB}
+  program: ${PUB400_PROGRAM:GETINV01}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method

@@ -1,0 +1,19 @@
+-- Set default schema to your target IBM i library
+SET CURRENT SCHEMA = 'SAMPLELIB';
+
+-- Create invoice master table
+CREATE OR REPLACE TABLE INVMAST01 (
+    INV_ID    CHAR(10)       NOT NULL PRIMARY KEY,
+    CUST_NO   DECIMAL(6, 0)  NOT NULL,
+    INV_AMT   DECIMAL(11, 2) NOT NULL,
+    STATUS    CHAR(1)        NOT NULL, -- 'O'=Open, 'P'=Paid, 'X'=Overdue
+    DUE_DATE  DECIMAL(8, 0)  NOT NULL  -- YYYYMMDD
+);
+
+-- Seed records
+INSERT INTO INVMAST01 (INV_ID, CUST_NO, INV_AMT, STATUS, DUE_DATE) 
+VALUES 
+('INV-1001', 100001, 1250.00, 'O', 20261115),
+('INV-1002', 100002,  450.50, 'P', 20261020),
+('INV-1003', 100003, 3100.75, 'O', 20260901),
+('INV-1004', 100004,  820.00, 'O', 20260815);

@@ -1,0 +1,172 @@
+swagger: "2.0"
+info:
+  title: "AS400 Invoice API Gateway"
+  description: "GCP API Gateway routing to hybrid adapter backends (v1: Local Tunnel, v2: Cloud Run)"
+  version: "2.0.0"
+schemes:
+  - "https"
+produces:
+  - "application/json"
+
+paths:
+  # ----------------------------------------------------------------------------
+  # v1 Routes (Local ngrok hybrid tunnel)
+  # ----------------------------------------------------------------------------
+  /api/v1/invoices/getinvoice:
+    get:
+      summary: "Get Invoice by ID (v1 - Local Tunnel)"
+      description: "Queries IBM i DB2 INVMAST01 and executes GETINV01 RPG program via local hybrid tunnel"
+      operationId: "getInvoiceV1"
+      x-google-backend:
+        address: "https://YOUR_NGROK_TUNNEL_URL"
+        path_translation: APPEND_PATH_TO_ADDRESS
+        deadline: 30.0
+      parameters:
+        - name: "invId"
+          in: "query"
+          required: true
+          type: "string"
+          description: "Invoice identifier (e.g., INV-1001)"
+      responses:
+        200:
+          description: "Successful response with invoice data"
+          schema:
+            $ref: "#/definitions/InvoiceResponse"
+        404:
+          description: "Invoice not found"
+          schema:
+            $ref: "#/definitions/InvoiceResponse"
+        500:
+          description: "Internal server or IBM i execution error"
+
+  /api/v1/invoices/overdue-summary:
+    get:
+      summary: "Get Overdue Summary (v1 - Local Tunnel)"
+      description: "Aggregates overdue invoice metrics from IBM i DB2 via local hybrid tunnel"
+      operationId: "getOverdueSummaryV1"
+      x-google-backend:
+        address: "https://YOUR_NGROK_TUNNEL_URL"
+        path_translation: APPEND_PATH_TO_ADDRESS
+        deadline: 30.0
+      responses:
+        200:
+          description: "Overdue summary aggregated from AS/400"
+          schema:
+            $ref: "#/definitions/OverdueSummaryResponse"
+        500:
+          description: "Internal server or IBM i execution error"
+
+  # ----------------------------------------------------------------------------
+  # v2 Routes (Production Google Cloud Run Target)
+  # ----------------------------------------------------------------------------
+  /api/v2/invoices/getinvoice:
+    get:
+      summary: "Get Invoice by ID (v2 - Cloud Run)"
+      description: "Queries IBM i DB2 INVMAST01 and executes GETINV01 RPG program via Cloud Run service"
+      operationId: "getInvoiceV2"
+      x-google-backend:
+        address: "https://CLOUD_RUN_SERVICE_URL_PLACEHOLDER"
+        path_translation: APPEND_PATH_TO_ADDRESS
+        deadline: 30.0
+      parameters:
+        - name: "invId"
+          in: "query"
+          required: true
+          type: "string"
+          description: "Invoice identifier (e.g., INV-1001)"
+      responses:
+        200:
+          description: "Successful response with invoice data"
+          schema:
+            $ref: "#/definitions/InvoiceResponse"
+        404:
+          description: "Invoice not found"
+          schema:
+            $ref: "#/definitions/InvoiceResponse"
+        500:
+          description: "Internal server or IBM i execution error"
+
+  /api/v2/invoices/overdue-summary:
+    get:
+      summary: "Get Overdue Summary (v2 - Cloud Run)"
+      description: "Aggregates overdue invoice metrics from IBM i DB2 via production Cloud Run adapter"
+      operationId: "getOverdueSummaryV2"
+      x-google-backend:
+        address: "https://CLOUD_RUN_SERVICE_URL_PLACEHOLDER"
+        path_translation: APPEND_PATH_TO_ADDRESS
+        deadline: 30.0
+      responses:
+        200:
+          description: "Overdue summary aggregated from AS/400"
+          schema:
+            $ref: "#/definitions/OverdueSummaryResponse"
+        500:
+          description: "Internal server or IBM i execution error"
+
+definitions:
+  InvoiceResponse:
+    type: "object"
+    properties:
+      duDate:
+        type: "integer"
+        format: "int64"
+        example: 20261115
+        description: "Due date in YYYYMMDD format"
+      custNo:
+        type: "integer"
+        format: "int64"
+        example: 100001
+        description: "Customer account number"
+      invAmt:
+        type: "number"
+        format: "double"
+        example: 1250.00
+        description: "Total invoice amount"
+      status:
+        type: "string"
+        example: "O"
+        description: "Invoice status (O=Open, P=Paid, X=Overdue)"
+      found:
+        type: "string"
+        example: "Y"
+        description: "Query status (Y=Found, N=Not Found)"
+
+  OverdueSummaryResponse:
+    type: "object"
+    properties:
+      status:
+        type: "string"
+        example: "SUCCESS"
+      backend:
+        type: "string"
+        example: "AS400-DB2-INVMAST01"
+      overdueCount:
+        type: "integer"
+        example: 2
+      totalOverdueAmount:
+        type: "number"
+        format: "double"
+        example: 3920.75
+      asOfDate:
+        type: "integer"
+        example: 20261007
+      overdueInvoices:
+        type: "array"
+        items:
+          type: "string"
+        example: ["INV-1003", "INV-1004"]
+
+security:
+  - api_key_query: []
+  - api_key_header: []
+
+securityDefinitions:
+  api_key_query:
+    type: "apiKey"
+    name: "key"
+    in: "query"
+  api_key_header:
+    type: "apiKey"
+    name: "x-api-key"
+    in: "header"
+

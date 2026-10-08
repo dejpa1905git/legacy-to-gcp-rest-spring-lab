@@ -1,0 +1,77 @@
+swagger: "2.0"
+info:
+  title: "AS400 Invoice API Gateway"
+  description: "GCP API Gateway configuration for IBM i / AS400 hybrid wrapper service"
+  version: "1.0.0"
+schemes:
+  - "https"
+produces:
+  - "application/json"
+paths:
+  /api/v1/invoices/getinvoice:
+    get:
+      summary: "Get Invoice by ID"
+      description: "Queries IBM i DB2 INVMAST01 and executes GETINV01 RPG program"
+      operationId: "getInvoice"
+      x-google-backend:
+        address: "https://${BACKEND_TUNNEL_HOST}"
+        path_translation: APPEND_PATH_TO_ADDRESS
+        deadline: 30.0
+      parameters:
+        - name: "invId"
+          in: "query"
+          required: true
+          type: "string"
+          description: "Invoice identifier (e.g., INV-1001)"
+      responses:
+        200:
+          description: "Successful response with invoice data"
+          schema:
+            $ref: "#/definitions/InvoiceResponse"
+        404:
+          description: "Invoice not found"
+          schema:
+            $ref: "#/definitions/InvoiceResponse"
+        500:
+          description: "Internal server or IBM i execution error"
+definitions:
+  InvoiceResponse:
+    type: "object"
+    properties:
+      duDate:
+        type: "integer"
+        format: "int64"
+        example: 20261115
+        description: "Due date in YYYYMMDD format"
+      custNo:
+        type: "integer"
+        format: "int64"
+        example: 100001
+        description: "Customer account number"
+      invAmt:
+        type: "number"
+        format: "double"
+        example: 1250.00
+        description: "Total invoice amount"
+      status:
+        type: "string"
+        example: "O"
+        description: "Invoice status (O=Open, P=Paid, X=Overdue)"
+      found:
+        type: "string"
+        example: "Y"
+        description: "Query status (Y=Found, N=Not Found)"
+security:
+  - api_key_query: []
+  - api_key_header: []
+securityDefinitions:
+  api_key_query:
+    type: "apiKey"
+    name: "key"
+    in: "query"
+  api_key_header:
+    type: "apiKey"
+    name: "x-api-key"
+    in: "header"
+
+

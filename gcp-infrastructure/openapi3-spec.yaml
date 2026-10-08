@@ -1,0 +1,62 @@
+openapi: "3.0.3"
+info:
+  title: "AS400 Invoice API Gateway"
+  description: "GCP API Gateway configuration for IBM i / AS400 hybrid wrapper service"
+  version: "1.0.0"
+servers:
+  - url: "https://${BACKEND_TUNNEL_HOST}"
+paths:
+  /api/v1/invoices/getinvoice:
+    get:
+      summary: "Get Invoice by ID"
+      description: "Queries IBM i DB2 INVMAST01 and executes GETINV01 RPG program"
+      operationId: "getInvoice"
+      x-google-backend:
+        address: "https://${BACKEND_TUNNEL_HOST}"
+        path_translation: APPEND_PATH_TO_ADDRESS
+        deadline: 30.0
+      parameters:
+        - name: "invId"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+          description: "Invoice identifier (e.g., INV-1001)"
+          example: "INV-1001"
+      responses:
+        "200":
+          description: "Successful response with invoice data"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+        "404":
+          description: "Invoice not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+components:
+  schemas:
+    InvoiceResponse:
+      type: "object"
+      properties:
+        duDate:
+          type: "integer"
+          format: "int64"
+          example: 20261115
+        custNo:
+          type: "integer"
+          format: "int64"
+          example: 100001
+        invAmt:
+          type: "number"
+          format: "double"
+          example: 1250.00
+        status:
+          type: "string"
+          example: "O"
+        found:
+          type: "string"
+          example: "Y"
+

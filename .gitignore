@@ -1,0 +1,64 @@
+# ==============================================================================
+# Git Ignore - AS/400 Enterprise Modernization PoC
+# ==============================================================================
+
+# Compiled Java & Maven Build Outputs
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# IDE and Editor Directories
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Operating System Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+[Dd]esktop.ini
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+$RECYCLE.BIN/
+
+# Logs and Runtime Artifacts
+*.log
+logs/
+*.tmp
+*.bak
+*.swp
+*~
+
+# Sensitive Credentials and Environment Configurations
+.env
+.env.*
+*.local
+*.local/
+*.key
+*.pem
+*.pfx
+*.p12
+*secrets*
+*credentials*
+*service-account*.json
+!gcp-infrastructure/*.yaml
+!gcp-infrastructure/*.ps1
+!gcp-infrastructure/*.sh
+
