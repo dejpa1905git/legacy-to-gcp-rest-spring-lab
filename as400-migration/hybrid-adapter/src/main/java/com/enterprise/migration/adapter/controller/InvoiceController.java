@@ -1,6 +1,7 @@
 package com.enterprise.migration.adapter.controller;
 
 import com.enterprise.migration.adapter.dto.InvoiceResponse;
+import com.enterprise.migration.adapter.exception.IbmiHostUnavailableException;
 import com.enterprise.migration.adapter.service.InvoiceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,12 +13,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +54,11 @@ public class InvoiceController {
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "Error executing IBM i ProgramCall or network communication failure"
+                    description = "Unexpected internal server error"
+            ),
+            @ApiResponse(
+                    responseCode = "503",
+                    description = "Upstream IBM i (AS/400) backend is offline, unreachable, or undergoing scheduled maintenance"
             )
     })
     @GetMapping("/getinvoice")
@@ -88,10 +95,47 @@ public class InvoiceController {
         return ResponseEntity.ok(summary);
     }
 
-    @org.springframework.web.bind.annotation.ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleException(Exception ex) {
+    @ExceptionHandler(IbmiHostUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleHostUnavailable(IbmiHostUnavailableException ex) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("error", "IBM i Call Error");
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.SERVICE_UNAVAILABLE.value());
+        body.put("error", "Service Unavailable");
+        body.put("fault", "UPSTREAM_LEGACY_HOST");
+        body.put("message", "Cannot reach the host: Upstream IBM i (AS/400) server is offline or undergoing scheduled maintenance.");
+
+        Map<String, String> infra = new LinkedHashMap<>();
+        infra.put("gcpApiGateway", "HEALTHY");
+        infra.put("gcpCloudRun", "HEALTHY");
+        infra.put("upstreamIbmI", "UNREACHABLE");
+        body.put("infrastructureStatus", infra);
+
+        if (ex.getInvoiceId() != null) {
+            body.put("invoiceId", ex.getInvoiceId());
+        }
+        body.put("advisory", "GCP perimeter and application services are operational. Check upstream AS/400 host status.");
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleException(Exception ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        String lower = msg.toLowerCase();
+        if (lower.contains("connection refused")
+                || lower.contains("host is unreachable")
+                || lower.contains("unreachable")
+                || lower.contains("timed out")
+                || lower.contains("timeout")
+                || lower.contains("cannot connect")
+                || lower.contains("connection dropped")
+                || lower.contains("no route to host")) {
+            return handleHostUnavailable(new IbmiHostUnavailableException(null, "pub400.com", msg, ex));
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        body.put("error", "Internal Server Error");
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }

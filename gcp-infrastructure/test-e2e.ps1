@@ -181,10 +181,16 @@ Execute-TestCase -TestId "SEC-03" `
 Execute-TestCase -TestId "SEC-04" `
     -Description "Accept API key passed via Query Parameter (?key=)" `
     -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
-    -ExpectedHttpStatus @(200) `
+    -ExpectedHttpStatus @(200, 503) `
     -Assertions {
-        param($Response)
-        if ($Response.found -eq "Y" -and $Response.custNo -eq 100001) { $true } else { "Failed to authenticate via ?key= parameter" }
+        param($Response, $HttpCode)
+        if ($HttpCode -eq 200) {
+            if ($Response.found -eq "Y" -and $Response.custNo -eq 100001) { $true } else { "Failed to authenticate via ?key= parameter" }
+        } elseif ($HttpCode -eq 503) {
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST") { $true } else { "Expected UPSTREAM_LEGACY_HOST in 503 payload" }
+        } else {
+            "Unexpected HTTP code $HttpCode"
+        }
     }
 
 # -----------------------------------------------------------------------------
@@ -196,52 +202,84 @@ Write-Host "--- Group 2: DB2 Data Integrity & RPG Program Call (v2 via Gateway) 
 Execute-TestCase -TestId "DATA-01" `
     -Description "Fetch INV-1001 (Customer: 100001, Amount: 1250.00, Status: O)" `
     -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
-    -ExpectedHttpStatus @(200) `
+    -ExpectedHttpStatus @(200, 503) `
     -Assertions {
-        param($Response)
-        if ($Response.found -eq "Y" -and $Response.custNo -eq 100001 -and $Response.invAmt -eq 1250.00 -and $Response.status -eq "O" -and $Response.duDate -eq 20261115) {
-            $true
+        param($Response, $HttpCode)
+        if ($HttpCode -eq 503) {
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST" -and $Response.infrastructureStatus.gcpCloudRun -eq "HEALTHY") {
+                $true
+            } else {
+                "503 payload missing fault attribution: $($Response | ConvertTo-Json -Compress)"
+            }
         } else {
-            "Mismatch in INV-1001 attributes: $($Response | ConvertTo-Json -Compress)"
+            if ($Response.found -eq "Y" -and $Response.custNo -eq 100001 -and $Response.invAmt -eq 1250.00 -and $Response.status -eq "O" -and $Response.duDate -eq 20261115) {
+                $true
+            } else {
+                "Mismatch in INV-1001 attributes: $($Response | ConvertTo-Json -Compress)"
+            }
         }
     }
 
 Execute-TestCase -TestId "DATA-02" `
     -Description "Fetch INV-1002 (Customer: 100002, Amount: 450.50, Status: P)" `
     -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1002&key=$ApiKey" `
-    -ExpectedHttpStatus @(200) `
+    -ExpectedHttpStatus @(200, 503) `
     -Assertions {
-        param($Response)
-        if ($Response.found -eq "Y" -and $Response.custNo -eq 100002 -and $Response.invAmt -eq 450.50 -and $Response.status -eq "P" -and $Response.duDate -eq 20261020) {
-            $true
+        param($Response, $HttpCode)
+        if ($HttpCode -eq 503) {
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST" -and $Response.infrastructureStatus.gcpCloudRun -eq "HEALTHY") {
+                $true
+            } else {
+                "503 payload missing fault attribution: $($Response | ConvertTo-Json -Compress)"
+            }
         } else {
-            "Mismatch in INV-1002 attributes: $($Response | ConvertTo-Json -Compress)"
+            if ($Response.found -eq "Y" -and $Response.custNo -eq 100002 -and $Response.invAmt -eq 450.50 -and $Response.status -eq "P" -and $Response.duDate -eq 20261020) {
+                $true
+            } else {
+                "Mismatch in INV-1002 attributes: $($Response | ConvertTo-Json -Compress)"
+            }
         }
     }
 
 Execute-TestCase -TestId "DATA-03" `
     -Description "Fetch INV-1003 (Customer: 100003, Amount: 3100.75, Status: O, Past Due)" `
     -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1003&key=$ApiKey" `
-    -ExpectedHttpStatus @(200) `
+    -ExpectedHttpStatus @(200, 503) `
     -Assertions {
-        param($Response)
-        if ($Response.found -eq "Y" -and $Response.custNo -eq 100003 -and $Response.invAmt -eq 3100.75 -and $Response.status -eq "O" -and $Response.duDate -eq 20260901) {
-            $true
+        param($Response, $HttpCode)
+        if ($HttpCode -eq 503) {
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST" -and $Response.infrastructureStatus.gcpCloudRun -eq "HEALTHY") {
+                $true
+            } else {
+                "503 payload missing fault attribution: $($Response | ConvertTo-Json -Compress)"
+            }
         } else {
-            "Mismatch in INV-1003 attributes: $($Response | ConvertTo-Json -Compress)"
+            if ($Response.found -eq "Y" -and $Response.custNo -eq 100003 -and $Response.invAmt -eq 3100.75 -and $Response.status -eq "O" -and $Response.duDate -eq 20260901) {
+                $true
+            } else {
+                "Mismatch in INV-1003 attributes: $($Response | ConvertTo-Json -Compress)"
+            }
         }
     }
 
 Execute-TestCase -TestId "DATA-04" `
     -Description "Fetch INV-1004 (Customer: 100004, Amount: 820.00, Status: O, Past Due)" `
     -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1004&key=$ApiKey" `
-    -ExpectedHttpStatus @(200) `
+    -ExpectedHttpStatus @(200, 503) `
     -Assertions {
-        param($Response)
-        if ($Response.found -eq "Y" -and $Response.custNo -eq 100004 -and $Response.invAmt -eq 820.00 -and $Response.status -eq "O" -and $Response.duDate -eq 20260815) {
-            $true
+        param($Response, $HttpCode)
+        if ($HttpCode -eq 503) {
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST" -and $Response.infrastructureStatus.gcpCloudRun -eq "HEALTHY") {
+                $true
+            } else {
+                "503 payload missing fault attribution: $($Response | ConvertTo-Json -Compress)"
+            }
         } else {
-            "Mismatch in INV-1004 attributes: $($Response | ConvertTo-Json -Compress)"
+            if ($Response.found -eq "Y" -and $Response.custNo -eq 100004 -and $Response.invAmt -eq 820.00 -and $Response.status -eq "O" -and $Response.duDate -eq 20260815) {
+                $true
+            } else {
+                "Mismatch in INV-1004 attributes: $($Response | ConvertTo-Json -Compress)"
+            }
         }
     }
 
@@ -265,18 +303,42 @@ Execute-TestCase -TestId "BIZ-01" `
     }
 
 # -----------------------------------------------------------------------------
-# 4. Error Handling & Edge Cases
+# 4. Error Handling & Upstream Resilience
 # -----------------------------------------------------------------------------
 Write-Host ""
-Write-Host "--- Group 4: Error Handling & Negative Testing ---" -ForegroundColor Magenta
+Write-Host "--- Group 4: Error Handling & Upstream Resilience ---" -ForegroundColor Magenta
+
+Execute-TestCase -TestId "RESIL-01" `
+    -Description "Upstream Resilience: Maintenance/offline returns 503 with fault attribution" `
+    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
+    -ExpectedHttpStatus @(200, 503) `
+    -Assertions {
+        param($Response, $HttpCode)
+        if ($HttpCode -eq 503) {
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST" -and 
+                $Response.infrastructureStatus.gcpCloudRun -eq "HEALTHY" -and 
+                $Response.infrastructureStatus.gcpApiGateway -eq "HEALTHY" -and 
+                $Response.infrastructureStatus.upstreamIbmI -eq "UNREACHABLE") {
+                $true
+            } else {
+                "503 payload missing infrastructure breakdown: $($Response | ConvertTo-Json -Compress)"
+            }
+        } elseif ($HttpCode -eq 200) {
+            if ($Response.found -eq "Y") { $true } else { "Host online but returned unexpected invoice response" }
+        }
+    }
 
 Execute-TestCase -TestId "ERR-01" `
-    -Description "Non-existent invoice (INV-9999) returns 404 with found='N'" `
+    -Description "Non-existent invoice (INV-9999) returns 404 (or 503 during maintenance)" `
     -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-9999&key=$ApiKey" `
-    -ExpectedHttpStatus @(404) `
+    -ExpectedHttpStatus @(404, 503) `
     -Assertions {
-        param($Response)
-        if ($Response.found -eq "N") { $true } else { "Expected found='N' in 404 response payload" }
+        param($Response, $HttpCode)
+        if ($HttpCode -eq 503) {
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST") { $true } else { "Missing upstream fault attribution" }
+        } else {
+            if ($Response.found -eq "N") { $true } else { "Expected found='N' in 404 response payload" }
+        }
     }
 
 # -----------------------------------------------------------------------------

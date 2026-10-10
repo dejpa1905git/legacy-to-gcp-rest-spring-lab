@@ -13,11 +13,20 @@ param (
     [string]$Pub400Library = $env:PUB400_LIBRARY,
     [string]$GatewayId = "as400-gateway",
     [string]$ApiId = "as400-invoice-api",
-    [string]$AdapterDir = "$PSScriptRoot\..\as400-migration\hybrid-adapter",
-    [string]$SpecFile = "$PSScriptRoot\openapi-gateway-active.yaml"
+    [string]$AdapterDir,
+    [string]$SpecFile
 )
 
 $ErrorActionPreference = "Stop"
+
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
+if (-not $scriptDir) { $scriptDir = Join-Path (Get-Location).Path "gcp-infrastructure" }
+if (-not $AdapterDir) {
+    $AdapterDir = (Resolve-Path (Join-Path $scriptDir "..\as400-migration\hybrid-adapter")).Path
+}
+if (-not $SpecFile) {
+    $SpecFile = (Resolve-Path (Join-Path $scriptDir "openapi-gateway-active.yaml")).Path
+}
 
 # Ensure gcloud is found in PATH
 $gcloudBin = "$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin"
@@ -51,14 +60,19 @@ $envVarsString = $envVarsList -join ","
 
 # 3. Build and Deploy Container to Cloud Run
 Write-Host "`n[*] Step 3: Building container and deploying to Cloud Run in $Region..." -ForegroundColor Yellow
-gcloud run deploy $ServiceName `
-    --source=$AdapterDir `
-    --region=$Region `
-    --platform=managed `
-    --allow-unauthenticated `
-    --set-env-vars="$envVarsString" `
-    --project=$ProjectId `
-    --quiet
+$deployArgs = @(
+    "run", "deploy", $ServiceName,
+    "--source=$AdapterDir",
+    "--region=$Region",
+    "--platform=managed",
+    "--allow-unauthenticated",
+    "--project=$ProjectId",
+    "--quiet"
+)
+if ($envVarsString) {
+    $deployArgs += "--update-env-vars=$envVarsString"
+}
+& gcloud @deployArgs
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Cloud Run deployment failed. Please check build logs above."
@@ -72,9 +86,8 @@ Write-Host "`n[*] Step 3: Preparing API Gateway spec revision with Cloud Run bac
 $deploySpecFile = Join-Path ([System.IO.Path]::GetTempPath()) ("openapi-gateway-deploy-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + ".yaml")
 $specContent = Get-Content -Path $SpecFile -Raw
 $specContent = $specContent -replace 'https://CLOUD_RUN_SERVICE_URL_PLACEHOLDER', $cloudRunUrl
-if ($env:NGROK_DOMAIN) {
-    $specContent = $specContent -replace 'https://YOUR_NGROK_TUNNEL_URL', "https://$env:NGROK_DOMAIN"
-}
+$ngrokDomain = if ($env:NGROK_DOMAIN) { $env:NGROK_DOMAIN } else { "straw-countdown-throwing.ngrok-free.dev" }
+$specContent = $specContent -replace 'https://YOUR_NGROK_TUNNEL_URL', "https://$ngrokDomain"
 Set-Content -Path $deploySpecFile -Value $specContent -Encoding UTF8
 
 # 5. Push New API Config Revision to GCP API Gateway

@@ -2,6 +2,7 @@ package com.enterprise.migration.adapter.service;
 
 import com.enterprise.migration.adapter.config.IbmiProperties;
 import com.enterprise.migration.adapter.dto.InvoiceResponse;
+import com.enterprise.migration.adapter.exception.IbmiHostUnavailableException;
 import com.ibm.as400.access.AS400;
 import com.ibm.as400.access.AS400Message;
 import com.ibm.as400.access.AS400PackedDecimal;
@@ -9,6 +10,7 @@ import com.ibm.as400.access.AS400Text;
 import com.ibm.as400.access.ProgramCall;
 import com.ibm.as400.access.ProgramParameter;
 import com.ibm.as400.access.QSYSObjectPathName;
+import com.ibm.as400.access.SocketProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,12 @@ public class IbmiInvoiceService implements InvoiceService {
             } else {
                 as400 = new AS400(host, user);
             }
+
+            // Configure socket timeouts: fail fast within 5s if host is offline / unreachable
+            SocketProperties socketProperties = new SocketProperties();
+            socketProperties.setLoginTimeout(5000);
+            socketProperties.setSoTimeout(15000);
+            as400.setSocketProperties(socketProperties);
 
             // 1. inInvId: char(10)
             AS400Text textInvId = new AS400Text(10, as400);
@@ -118,6 +126,9 @@ public class IbmiInvoiceService implements InvoiceService {
 
         } catch (Exception e) {
             log.error("Exception during IBM i ProgramCall for invoice {}: {}", invId, e.getMessage(), e);
+            if (isConnectivityError(e)) {
+                throw new IbmiHostUnavailableException(invId, host, e.getMessage(), e);
+            }
             throw new RuntimeException("Failed to call IBM i program for invoice " + invId + ": " + e.getMessage(), e);
         } finally {
             if (as400 != null) {
@@ -127,6 +138,38 @@ public class IbmiInvoiceService implements InvoiceService {
                 }
             }
         }
+    }
+
+    private boolean isConnectivityError(Throwable e) {
+        Throwable curr = e;
+        while (curr != null) {
+            if (curr instanceof java.net.SocketException
+                    || curr instanceof java.net.ConnectException
+                    || curr instanceof java.net.NoRouteToHostException
+                    || curr instanceof java.net.UnknownHostException
+                    || curr instanceof java.net.SocketTimeoutException
+                    || curr instanceof com.ibm.as400.access.ConnectionDroppedException
+                    || curr instanceof com.ibm.as400.access.ServerStartupException) {
+                return true;
+            }
+            String msg = curr.getMessage();
+            if (msg != null) {
+                String lower = msg.toLowerCase();
+                if (lower.contains("connection refused")
+                        || lower.contains("host is unreachable")
+                        || lower.contains("unreachable")
+                        || lower.contains("timed out")
+                        || lower.contains("timeout")
+                        || lower.contains("cannot connect")
+                        || lower.contains("connection dropped")
+                        || lower.contains("no route to host")
+                        || lower.contains("not connected")) {
+                    return true;
+                }
+            }
+            curr = curr.getCause();
+        }
+        return false;
     }
 }
 

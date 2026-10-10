@@ -37,7 +37,9 @@ paths:
           schema:
             $ref: "#/definitions/InvoiceResponse"
         500:
-          description: "Internal server or IBM i execution error"
+          description: "Internal server or unexpected application error"
+        503:
+          description: "Upstream IBM i (AS/400) backend is offline, unreachable, or in maintenance"
 
   /api/v1/invoices/overdue-summary:
     get:
@@ -54,7 +56,9 @@ paths:
           schema:
             $ref: "#/definitions/OverdueSummaryResponse"
         500:
-          description: "Internal server or IBM i execution error"
+          description: "Internal server or unexpected application error"
+        503:
+          description: "Upstream IBM i (AS/400) backend is offline, unreachable, or in maintenance"
 
   # ----------------------------------------------------------------------------
   # v2 Routes (Production Google Cloud Run Target)
@@ -84,7 +88,9 @@ paths:
           schema:
             $ref: "#/definitions/InvoiceResponse"
         500:
-          description: "Internal server or IBM i execution error"
+          description: "Internal server or unexpected application error"
+        503:
+          description: "Upstream IBM i (AS/400) backend is offline, unreachable, or in maintenance"
 
   /api/v2/invoices/overdue-summary:
     get:
@@ -101,7 +107,9 @@ paths:
           schema:
             $ref: "#/definitions/OverdueSummaryResponse"
         500:
-          description: "Internal server or IBM i execution error"
+          description: "Internal server or unexpected application error"
+        503:
+          description: "Upstream IBM i (AS/400) backend is offline, unreachable, or in maintenance"
 
 definitions:
   InvoiceResponse:
