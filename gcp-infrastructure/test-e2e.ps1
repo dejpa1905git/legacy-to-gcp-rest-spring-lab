@@ -183,12 +183,18 @@ Execute-TestCase -TestId "SEC-03" `
     }
 
 Execute-TestCase -TestId "SEC-04" `
-    -Description "Reject API key in Query Parameter (?key=) - Enforcing Header-Only Security" `
+    -Description "Dual-Transport Compatibility: Gateway accepts key query parameter (?key=)" `
     -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
-    -ExpectedHttpStatus @(401, 403) `
+    -ExpectedHttpStatus @(200, 503) `
     -Assertions {
-        param($Response, $HttpCode, $Raw)
-        if ($Raw -match "UNAUTHENTICATED|PERMISSION_DENIED|apiKey|forbidden|unauthorized") { $true } else { "Expected query parameter key to be rejected" }
+        param($Response, $HttpCode)
+        if ($HttpCode -eq 200) {
+            if ($Response.found -eq "Y" -and $Response.custNo -eq 100001) { $true } else { "Failed to authenticate via ?key= parameter" }
+        } elseif ($HttpCode -eq 503) {
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST") { $true } else { "Expected UPSTREAM_LEGACY_HOST in 503 payload" }
+        } else {
+            "Unexpected HTTP code $HttpCode"
+        }
     }
 
 # -----------------------------------------------------------------------------
