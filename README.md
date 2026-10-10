@@ -170,12 +170,10 @@ curl -X GET "https://as400-gateway-<gateway-hash>.uc.gateway.dev/api/v2/invoices
   -H "x-api-key: YOUR_GCP_API_KEY"
 ```
 
-*Alternative via query parameter:*
-```bash
-curl -X GET "https://as400-gateway-<gateway-hash>.uc.gateway.dev/api/v2/invoices/getinvoice?invId=INV-1001&key=YOUR_GCP_API_KEY"
-```
+> [!IMPORTANT]
+> **Header-Only Authentication**: For enterprise security, API keys are strictly passed via the `x-api-key` HTTP request header and not in query parameters, preventing credentials from leaking into web server access logs, proxies, or browser histories.
 
-#### Expected 200 OK Response:
+#### Expected 200 OK Response (Host Online):
 ```json
 {
   "duDate": 20261115,
@@ -183,6 +181,24 @@ curl -X GET "https://as400-gateway-<gateway-hash>.uc.gateway.dev/api/v2/invoices
   "invAmt": 1250.00,
   "status": "O",
   "found": "Y"
+}
+```
+
+#### Expected 503 Response (Upstream Maintenance / Host Offline):
+```json
+{
+  "timestamp": "2026-10-09T20:20:10.027780991Z",
+  "status": 503,
+  "error": "Service Unavailable",
+  "fault": "UPSTREAM_LEGACY_HOST",
+  "message": "Cannot reach the host: Upstream IBM i (AS/400) server is offline or undergoing scheduled maintenance.",
+  "infrastructureStatus": {
+    "gcpApiGateway": "HEALTHY",
+    "gcpCloudRun": "HEALTHY",
+    "upstreamIbmI": "UNREACHABLE"
+  },
+  "invoiceId": "INV-1001",
+  "advisory": "GCP perimeter and application services are operational. Check upstream AS/400 host status."
 }
 ```
 
@@ -220,12 +236,20 @@ Run the automated test harness to validate all security rules, DB2 records (`INV
 
 ## 7. Roadmap & Next Steps
 
-1. **Sprint 1.5b / 1.6 (Completed)**:
-   - Containerized Spring Boot adapter deployed to **Google Cloud Run**.
-   - API Gateway updated with dual-routing configuration (`/v1` to local tunnel, `/v2` to Cloud Run).
-   - 100% automated test verification across security, data integrity, and latency.
+1. **Sprint 1.0 – 1.6b (Completed - Foundation & POC)**:
+   - Built Spring Boot hybrid adapter with JTOpen (JT400) wrapping IBM i RPG program calls.
+   - Deployed dual-backend Google Cloud API Gateway & Google Cloud Run.
+   - 100% automated integration test suite verification.
 
-2. **Phase 2 - Stored Procedure Wrapping**:
+2. **Sprint 2.0 (Active - Enterprise Security & Upstream Resilience Hardening)**:
+   - **Upstream Fault Tolerance**: Fail-fast socket timeouts and RFC-standard `503 Service Unavailable` error handling when IBM i is offline or in maintenance.
+   - **Header-Only Authentication**: Enforce API keys strictly in HTTP request headers (`x-api-key`), stripping query parameter exposure.
+   - **Perimeter Lockdown**: Private Cloud Run ingress restricted to API Gateway IAM invoker tokens (`--no-allow-unauthenticated`).
+   - **Secret Management**: Google Cloud Secret Manager integration with automated rotation for IBM i service account credentials.
+   - **Workload Throttling & Connection Pooling**: `AS400ConnectionPool` implementation and Cloud Run concurrency capping to prevent legacy server exhaustion.
+   - **Circuit Breaking**: Resilience4j circuit breaker to prevent cascading failures during upstream host maintenance.
+
+3. **Phase 2 - Stored Procedure Wrapping**:
    - Wrap legacy RPG programs into **DB2 Stored Procedures** (`CREATE PROCEDURE ... EXTERNAL NAME ... GENERAL`).
    - Enable standardized JDBC callable statements as an alternative to JT400 binary `ProgramCall`.
 
