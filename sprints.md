@@ -4,8 +4,8 @@
 
 ## In Progress
 - [/] Sprint 2: Enterprise Security & Upstream Resilience Hardening
-  - [X] Sprint 2.0: Upstream maintenance & fail-fast 503 Service Unavailable handling (commit e110800, verified live on Cloud Run Revision 3)
-  - [X] Sprint 2.1: Enforce HTTP header-only API key security (strip query parameter extraction from OpenAPI spec, commit 73675d1)
+  - [X] Sprint 2.0: Upstream maintenance & fail-fast 503 Service Unavailable handling (verified live on Cloud Run Revision 3)
+  - [X] Sprint 2.1: Enforce HTTP header-only API key security (strip query parameter extraction from OpenAPI spec & E2E suite verified)
   - [ ] Sprint 2.2: Lock down Cloud Run perimeter (IAM Service-to-Service authentication, `--no-allow-unauthenticated`)
   - [ ] Sprint 2.3: Store and rotate IBM i credentials using Google Cloud Secret Manager
   - [ ] Sprint 2.4: Enterprise connection pooling (`AS400ConnectionPool`) & Cloud Run workload capping
