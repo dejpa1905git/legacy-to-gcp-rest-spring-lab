@@ -230,34 +230,40 @@ Run the automated test harness to validate all security rules, DB2 records (`INV
 .\gcp-infrastructure\test-e2e.ps1 -ApiKey "YOUR_GCP_API_KEY"
 ```
 
-*(See [TEST_REPORT_E2E.md](TEST_REPORT_E2E.md) for the verified 11/11 passing test run).*
+*(See [TEST_REPORT_E2E.md](TEST_REPORT_E2E.md) for the verified 12/12 passing test run).*
 
 ---
 
 ## 7. Roadmap & Next Steps
 
-1. **Sprint 1.0 – 1.6b (Completed - Foundation & POC)**:
-   - Built Spring Boot hybrid adapter with JTOpen (JT400) wrapping IBM i RPG program calls.
-   - Deployed dual-backend Google Cloud API Gateway & Google Cloud Run.
-   - 100% automated integration test suite verification.
+### Sprint 1: Foundation & Cloud Modernization PoC (Completed)
+- **Sprint 1.0**: Initialize workspace directory structure & development environment in VS Code.
+- **Sprint 1.1**: Setup PUB400 IBM i library & seed synthetic `INVOICE_MASTER` DB2 table.
+- **Sprint 1.2**: Author & compile parameter-aware RPG business logic (`INVCALC.rpgle` / `GETINV01`) on PUB400.
+- **Sprint 1.3**: Build Spring Boot hybrid adapter service with JTOpen (JT400) binary `ProgramCall` mapping to REST.
+- **Sprint 1.4**: Configure secure local development ingress tunnel (ngrok) and OpenAPI 2.0 specification.
+- **Sprint 1.5**: Deploy Google Cloud API Gateway with API key perimeter authentication.
+- **Sprint 1.5b**: Deploy containerized Spring Boot adapter to Google Cloud Run as `/v2` production target.
+- **Sprint 1.6**: End-to-end integration test harness & DB2 state verification (100% success rate).
+- **Sprint 1.6b**: Production documentation, sanitization, and Git/GitHub repository baseline.
+- **Sprint 1.7**: *(In Progress)* Executive & technical presentation video walk-through.
 
-2. **Sprint 2.0 (Active - Enterprise Security & Upstream Resilience Hardening)**:
-   - **Upstream Fault Tolerance**: Fail-fast socket timeouts and RFC-standard `503 Service Unavailable` error handling when IBM i is offline or in maintenance.
-   - **Header-Only Authentication**: Enforce API keys strictly in HTTP request headers (`x-api-key`), stripping query parameter exposure.
-   - **Perimeter Lockdown**: Private Cloud Run ingress restricted to API Gateway IAM invoker tokens (`--no-allow-unauthenticated`).
-   - **Secret Management**: Google Cloud Secret Manager integration with automated rotation for IBM i service account credentials.
-   - **Workload Throttling & Connection Pooling**: `AS400ConnectionPool` implementation and Cloud Run concurrency capping to prevent legacy server exhaustion.
-   - **Circuit Breaking**: Resilience4j circuit breaker to prevent cascading failures during upstream host maintenance.
+### Sprint 2: Enterprise Security & Upstream Resilience Hardening (Active)
+- **Sprint 2.0** `[Completed]`: Upstream maintenance & fail-fast 503 handling with fault attribution (`UPSTREAM_LEGACY_HOST`).
+- **Sprint 2.1** `[Completed]`: Enforce HTTP header-only API key security (`x-api-key`), stripping query parameter exposure across OpenAPI contract and E2E harness.
+- **Sprint 2.2** `[Next / In Progress]`: Lock down Cloud Run perimeter with IAM Service-to-Service authentication (`--no-allow-unauthenticated` + API Gateway service account OIDC invoker).
+- **Sprint 2.3**: Store and rotate IBM i credentials using Google Cloud Secret Manager.
+- **Sprint 2.4**: Enterprise connection pooling (`AS400ConnectionPool`) & Cloud Run workload capping to protect legacy host resources.
+- **Sprint 2.5**: Upstream fault tolerance & circuit breaking via Resilience4j to avoid cascading failures during PUB400 maintenance.
 
-3. **Phase 2 - Stored Procedure Wrapping**:
-   - Wrap legacy RPG programs into **DB2 Stored Procedures** (`CREATE PROCEDURE ... EXTERNAL NAME ... GENERAL`).
-   - Enable standardized JDBC callable statements as an alternative to JT400 binary `ProgramCall`.
-
-3. **Phase 3 - Asynchronous Event-Driven Ingestion**:
-   - Implement change-data-capture (CDC) on DB2 journal receivers (`JRNRCV`) via Google Cloud Pub/Sub to trigger real-time downstream cloud events.
-
-4. **Phase 4 - Zero-Trust VPC Service Controls**:
-   - Establish dedicated Cloud Interconnect / Cloud VPN tunnel between Google Cloud VPC and on-premise IBM Power Systems, eliminating public IP exposure.
+### Future Architecture Roadmap
+- **Phase 3 - Stored Procedure Wrapping**:
+  - Wrap legacy RPG programs into **DB2 Stored Procedures** (`CREATE PROCEDURE ... EXTERNAL NAME ... GENERAL`).
+  - Enable standardized JDBC callable statements as an alternative to JT400 binary `ProgramCall`.
+- **Phase 4 - Asynchronous Event-Driven Ingestion**:
+  - Implement change-data-capture (CDC) on DB2 journal receivers (`JRNRCV`) via Google Cloud Pub/Sub to trigger real-time downstream cloud events.
+- **Phase 5 - Zero-Trust VPC Service Controls**:
+  - Establish dedicated Cloud Interconnect / Cloud VPN tunnel between Google Cloud VPC and on-premise IBM Power Systems, eliminating public IP exposure.
 
 ---
 
