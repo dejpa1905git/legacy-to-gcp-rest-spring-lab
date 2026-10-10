@@ -62,13 +62,8 @@ definitions:
         example: "Y"
         description: "Query status (Y=Found, N=Not Found)"
 security:
-  - api_key_query: []
   - api_key_header: []
 securityDefinitions:
-  api_key_query:
-    type: "apiKey"
-    name: "key"
-    in: "query"
   api_key_header:
     type: "apiKey"
     name: "x-api-key"

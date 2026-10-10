@@ -172,25 +172,23 @@ Execute-TestCase -TestId "SEC-03" `
     -Description "Accept API key passed via HTTP Header (x-api-key)" `
     -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001" `
     -Headers @{ "x-api-key" = $ApiKey } `
-    -ExpectedHttpStatus @(200) `
-    -Assertions {
-        param($Response)
-        if ($Response.found -eq "Y" -and $Response.custNo -eq 100001) { $true } else { "Failed to authenticate via x-api-key header" }
-    }
-
-Execute-TestCase -TestId "SEC-04" `
-    -Description "Accept API key passed via Query Parameter (?key=)" `
-    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
     -ExpectedHttpStatus @(200, 503) `
     -Assertions {
         param($Response, $HttpCode)
         if ($HttpCode -eq 200) {
-            if ($Response.found -eq "Y" -and $Response.custNo -eq 100001) { $true } else { "Failed to authenticate via ?key= parameter" }
+            if ($Response.found -eq "Y" -and $Response.custNo -eq 100001) { $true } else { "Failed to authenticate via x-api-key header" }
         } elseif ($HttpCode -eq 503) {
-            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST") { $true } else { "Expected UPSTREAM_LEGACY_HOST in 503 payload" }
-        } else {
-            "Unexpected HTTP code $HttpCode"
+            if ($Response.fault -eq "UPSTREAM_LEGACY_HOST") { $true } else { "503 returned but missing fault attribution" }
         }
+    }
+
+Execute-TestCase -TestId "SEC-04" `
+    -Description "Reject API key in Query Parameter (?key=) - Enforcing Header-Only Security" `
+    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
+    -ExpectedHttpStatus @(401, 403) `
+    -Assertions {
+        param($Response, $HttpCode, $Raw)
+        if ($Raw -match "UNAUTHENTICATED|PERMISSION_DENIED|apiKey|forbidden|unauthorized") { $true } else { "Expected query parameter key to be rejected" }
     }
 
 # -----------------------------------------------------------------------------
@@ -201,7 +199,8 @@ Write-Host "--- Group 2: DB2 Data Integrity & RPG Program Call (v2 via Gateway) 
 
 Execute-TestCase -TestId "DATA-01" `
     -Description "Fetch INV-1001 (Customer: 100001, Amount: 1250.00, Status: O)" `
-    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
+    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001" `
+    -Headers @{ "x-api-key" = $ApiKey } `
     -ExpectedHttpStatus @(200, 503) `
     -Assertions {
         param($Response, $HttpCode)
@@ -222,7 +221,8 @@ Execute-TestCase -TestId "DATA-01" `
 
 Execute-TestCase -TestId "DATA-02" `
     -Description "Fetch INV-1002 (Customer: 100002, Amount: 450.50, Status: P)" `
-    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1002&key=$ApiKey" `
+    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1002" `
+    -Headers @{ "x-api-key" = $ApiKey } `
     -ExpectedHttpStatus @(200, 503) `
     -Assertions {
         param($Response, $HttpCode)
@@ -243,7 +243,8 @@ Execute-TestCase -TestId "DATA-02" `
 
 Execute-TestCase -TestId "DATA-03" `
     -Description "Fetch INV-1003 (Customer: 100003, Amount: 3100.75, Status: O, Past Due)" `
-    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1003&key=$ApiKey" `
+    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1003" `
+    -Headers @{ "x-api-key" = $ApiKey } `
     -ExpectedHttpStatus @(200, 503) `
     -Assertions {
         param($Response, $HttpCode)
@@ -264,7 +265,8 @@ Execute-TestCase -TestId "DATA-03" `
 
 Execute-TestCase -TestId "DATA-04" `
     -Description "Fetch INV-1004 (Customer: 100004, Amount: 820.00, Status: O, Past Due)" `
-    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1004&key=$ApiKey" `
+    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1004" `
+    -Headers @{ "x-api-key" = $ApiKey } `
     -ExpectedHttpStatus @(200, 503) `
     -Assertions {
         param($Response, $HttpCode)
@@ -291,7 +293,8 @@ Write-Host "--- Group 3: Business Logic & Aggregation ---" -ForegroundColor Mage
 
 Execute-TestCase -TestId "BIZ-01" `
     -Description "Verify Overdue Summary Aggregates (Count: 2, Total: 3920.75)" `
-    -Uri "$GatewayUrl/api/v2/invoices/overdue-summary?key=$ApiKey" `
+    -Uri "$GatewayUrl/api/v2/invoices/overdue-summary" `
+    -Headers @{ "x-api-key" = $ApiKey } `
     -ExpectedHttpStatus @(200) `
     -Assertions {
         param($Response)
@@ -310,7 +313,8 @@ Write-Host "--- Group 4: Error Handling & Upstream Resilience ---" -ForegroundCo
 
 Execute-TestCase -TestId "RESIL-01" `
     -Description "Upstream Resilience: Maintenance/offline returns 503 with fault attribution" `
-    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
+    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001" `
+    -Headers @{ "x-api-key" = $ApiKey } `
     -ExpectedHttpStatus @(200, 503) `
     -Assertions {
         param($Response, $HttpCode)
@@ -330,7 +334,8 @@ Execute-TestCase -TestId "RESIL-01" `
 
 Execute-TestCase -TestId "ERR-01" `
     -Description "Non-existent invoice (INV-9999) returns 404 (or 503 during maintenance)" `
-    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-9999&key=$ApiKey" `
+    -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-9999" `
+    -Headers @{ "x-api-key" = $ApiKey } `
     -ExpectedHttpStatus @(404, 503) `
     -Assertions {
         param($Response, $HttpCode)
@@ -350,11 +355,19 @@ Write-Host "--- Group 5: Latency Benchmark (5 iterations) ---" -ForegroundColor 
 $benchmarkSamples = [System.Collections.Generic.List[double]]::new()
 for ($i = 1; $i -le 5; $i++) {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $benchResp = Invoke-WebRequest -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001&key=$ApiKey" -UseBasicParsing
+    $statusStr = "OK"
+    try {
+        $benchResp = Invoke-WebRequest -Uri "$GatewayUrl/api/v2/invoices/getinvoice?invId=INV-1001" -Headers @{ "x-api-key" = $ApiKey } -UseBasicParsing
+        $statusStr = $benchResp.StatusCode
+    } catch {
+        if ($_.Exception.Response) {
+            $statusStr = [int]$_.Exception.Response.StatusCode
+        }
+    }
     $sw.Stop()
     $sampleMs = [math]::Round($sw.Elapsed.TotalMilliseconds, 2)
     $benchmarkSamples.Add($sampleMs)
-    Write-Host "   Run $i : ${sampleMs} ms (HTTP $($benchResp.StatusCode))" -ForegroundColor Gray
+    Write-Host "   Run $i : ${sampleMs} ms (HTTP $statusStr)" -ForegroundColor Gray
 }
 
 $minLatency = ($benchmarkSamples | Measure-Object -Minimum).Minimum
@@ -392,7 +405,8 @@ if ($IncludeV1 -or $OnlyV1) {
 
     Execute-TestCase -TestId "V1-DATA-01" `
         -Description "Fetch INV-1001 via Gateway /v1 (Customer: 100001, Amount: 1250.00)" `
-        -Uri "$GatewayUrl/api/v1/invoices/getinvoice?invId=INV-1001&key=$ApiKey" `
+        -Uri "$GatewayUrl/api/v1/invoices/getinvoice?invId=INV-1001" `
+        -Headers @{ "x-api-key" = $ApiKey } `
         -ExpectedHttpStatus @(200) `
         -Assertions {
             param($Response)
@@ -401,7 +415,8 @@ if ($IncludeV1 -or $OnlyV1) {
 
     Execute-TestCase -TestId "V1-DATA-02" `
         -Description "Fetch INV-1002 via Gateway /v1 (Customer: 100002, Amount: 450.50)" `
-        -Uri "$GatewayUrl/api/v1/invoices/getinvoice?invId=INV-1002&key=$ApiKey" `
+        -Uri "$GatewayUrl/api/v1/invoices/getinvoice?invId=INV-1002" `
+        -Headers @{ "x-api-key" = $ApiKey } `
         -ExpectedHttpStatus @(200) `
         -Assertions {
             param($Response)
@@ -410,7 +425,8 @@ if ($IncludeV1 -or $OnlyV1) {
 
     Execute-TestCase -TestId "V1-BIZ-01" `
         -Description "Fetch Overdue Summary via Gateway /v1" `
-        -Uri "$GatewayUrl/api/v1/invoices/overdue-summary?key=$ApiKey" `
+        -Uri "$GatewayUrl/api/v1/invoices/overdue-summary" `
+        -Headers @{ "x-api-key" = $ApiKey } `
         -ExpectedHttpStatus @(200) `
         -Assertions {
             param($Response)
@@ -419,7 +435,8 @@ if ($IncludeV1 -or $OnlyV1) {
 
     Execute-TestCase -TestId "V1-ERR-01" `
         -Description "Non-existent invoice (INV-9999) returns 404 via Gateway /v1" `
-        -Uri "$GatewayUrl/api/v1/invoices/getinvoice?invId=INV-9999&key=$ApiKey" `
+        -Uri "$GatewayUrl/api/v1/invoices/getinvoice?invId=INV-9999" `
+        -Headers @{ "x-api-key" = $ApiKey } `
         -ExpectedHttpStatus @(404) `
         -Assertions {
             param($Response)
